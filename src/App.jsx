@@ -4,18 +4,11 @@ import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/layout/ProtectedRoute'
 import AuthPage from './pages/AuthPage'
+import DashboardPage from './pages/DashboardPage'
+import NewTripPage from './pages/NewTripPage'
+import ItineraryPage from './pages/ItineraryPage'
+import MyTripsPage from './pages/MyTripsPage'
 
-// We'll add the pages in later phases - for now, use a placeholder
-function DashboardPage() {
-  return (
-    <div className="min-h-screen gradient-bg flex items-center justify-center">
-      <div className="glass p-12 text-center">
-        <h1 className="text-3xl font-bold text-white">Dashboard</h1>
-        <p className="text-white/60 mt-2">You're logged in!</p>
-      </div>
-    </div>
-  )
-}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -34,9 +27,16 @@ function App() {
           <Routes>
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/" element={
-              <ProtectedRoute>
-                <DashboardPage />
-              </ProtectedRoute>
+              <ProtectedRoute><DashboardPage /></ProtectedRoute>
+            } />
+            <Route path="/new-trip" element={
+              <ProtectedRoute><NewTripPage /></ProtectedRoute>
+            } />
+            <Route path="/itinerary/:id" element={
+              <ProtectedRoute><ItineraryPage /></ProtectedRoute>
+            } />
+            <Route path="/my-trips" element={
+              <ProtectedRoute><MyTripsPage /></ProtectedRoute>
             } />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY)
 
-const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
 function buildPrompt({ destination, days, budget, travelStyle, interests }) {
     return `You are an expert travel planner. Create a detailed ${days}-day travel
@@ -36,12 +36,14 @@ function buildPrompt({ destination, days, budget, travelStyle, interests }) {
     }
     
     Rules:
-    - Each day MUST have exactly 3 activities: one for morning, one for afternoon, one for evening
-    - time_of_day must be one of: "morning", "afternoon", "evening"
-    - type must be one of: "food", "culture", "outdoor", "shopping", "nightlife"
-    - Include realistic locations and practical travel tips in notes
-    - Tailor activities to the ${budget} budget and ${travelStyle} travel style
-    - Return ONLY the JSON object, nothing else`
+       - Each day MUST have exactly 3 activities: one for morning, one for afternoon, one for evening
+        - time_of_day must be one of: "morning", "afternoon", "evening"
+        - type must be one of: "food", "culture", "outdoor", "shopping", "nightlife"
+        - For "location", ALWAYS provide a SPECIFIC real place name with address or neighborhood (e.g. "Trattoria da Mario, Via Roma 15" or "Deva Citadel, Strada Cetății"). NEVER use generic descriptions like "a hotel spa" or "a local restaurant"
+        - Include practical tips in notes: estimated costs, opening hours, booking advice, or insider tips (2-3 sentences)
+        - Tailor activities to the ${budget} budget level and ${travelStyle} travel style
+        - Return ONLY the JSON object, nothing else
+        `
 }
 
 function validateItinerary(data) {
@@ -66,11 +68,11 @@ function validateItinerary(data) {
             }
             if (!validTimeOfDay.includes(activity.time_of_day)) {
                 throw new Error(`Invalid time_of_day "${activity.time_of_day}" - must be
-                    morning, afternoon or evening`)
+    morning, afternoon or evening`)
             }
             if (!validTypes.includes(activity.type)) {
                 throw new Error(`Invalid type "${activity.type}" - must be food, culture,
-                    outdoor, shopping or nightlife`)
+        outdoor, shopping or nightlife`)
             }
         })
     })
@@ -87,7 +89,7 @@ export async function generateItinerary(tripDetails) {
         let text = response.text()
 
         // Clean up: Gemini sometimes wraps JSON in markdown code blocks
-        text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+        text = text.replace(/```json\n ? /g, '').replace(/```\n?/g, '').trim()
 
         // Parse and validate
         const itinerary = JSON.parse(text)
