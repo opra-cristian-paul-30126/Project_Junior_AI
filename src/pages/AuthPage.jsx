@@ -45,8 +45,7 @@ export default function AuthPage() {
             <div className="glass-strong p-8 w-full max-w-md relative animate-fade-in">
                 {/* Header */}
                 <div className="text-center mb-8">
-                    <h1 className="text-3xl font-bold gradient-primary bg-clip-text text-
-                    transparent">
+                    <h1 className="text-3xl font-bold bg-linear-to-r from-primary-500 to-accent-500 bg-clip-text text-transparent">
                         TripMind
                     </h1>
                     <p className="text-white/60 mt-2">

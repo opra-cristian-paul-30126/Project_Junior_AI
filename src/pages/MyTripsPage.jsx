@@ -9,7 +9,7 @@ function TripCard({ trip, onDelete }) {
     const { data: photo } = usePhoto(trip.destination)
 
     return (
-        <div className="glass overflow-hidden group hover:bg-white/10 transition-all">
+        <div className="glass overflow-hidden group hover:bg-white/10 transition-all flex flex-col h-full">
             {/* Photo header */}
             <div className="h-40 relative overflow-hidden">
                 {photo ? (
@@ -35,7 +35,7 @@ function TripCard({ trip, onDelete }) {
             </div>
 
             {/* Card body */}
-            <div className="p-5">
+            <div className="p-5 flex flex-col flex-grow">
                 <div className="flex items-center gap-2 mb-2">
                     <FiMapPin className="text-accent-400" />
                     <h3 className="font-bold text-white text-lg">{trip.destination}</h3>
@@ -63,7 +63,7 @@ function TripCard({ trip, onDelete }) {
                     )}
                     Created {new Date(trip.created_at).toLocaleDateString()}
                 </p>
-                <div className="flex gap-2">
+                <div className="flex gap-2 mt-auto">
                     <Link
                         to={`/itinerary/${trip.id}`}
                         className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-primary-500/20 text-primary-400 hover:bg-primary-500/30 transition-all text-sm font-medium"
