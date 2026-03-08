@@ -160,6 +160,8 @@ export default function ItineraryPage() {
                 days: trip.days,
                 budget: trip.budget,
                 travelStyle: trip.travel_style,
+                startDate: trip.start_date,
+                interests: trip.interests,
             })
 
             // 3. Save new itinerary
@@ -251,6 +253,13 @@ export default function ItineraryPage() {
                             <span className="flex items-center gap-1">
                                 <FiCompass size={14} /> <span className="capitalize">{trip.travel_style}</span>
                             </span>
+                            {trip.start_date && (
+                                <span className="flex items-center gap-1">
+                                    📅 {new Date(trip.start_date).toLocaleDateString('en-US', {
+                                        month: 'long', day: 'numeric', year: 'numeric'
+                                    })}
+                                </span>
+                            )}
                         </div>
                     </div>
                 </div>

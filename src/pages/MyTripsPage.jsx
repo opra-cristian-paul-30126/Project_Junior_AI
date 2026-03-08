@@ -54,6 +54,13 @@ function TripCard({ trip, onDelete }) {
                     </span>
                 </div>
                 <p className="text-white/30 text-xs mb-4">
+                    {trip.start_date && (
+                        <p className="text-white/40 text-xs mb-1">
+                            📅 {new Date(trip.start_date).toLocaleDateString('en-US', {
+                                month: 'long', day: 'numeric', year: 'numeric'
+                            })}
+                        </p>
+                    )}
                     Created {new Date(trip.created_at).toLocaleDateString()}
                 </p>
                 <div className="flex gap-2">
@@ -82,11 +89,11 @@ export default function MyTripsPage() {
     const navigate = useNavigate()
 
     const handleDelete = (tripId, destination) => {
-        if (!confirm(`Delete your trip to ${destination}? This cannot be undone.`))
-            return deleteTrip.mutate(tripId, {
-                onSuccess: () => toast.success('Trip deleted'),
-                onError: (err) => toast.error(err.message),
-            })
+        if (!confirm(`Delete your trip to ${destination}? This cannot be undone.`)) return
+        deleteTrip.mutate(tripId, {
+            onSuccess: () => toast.success('Trip deleted'),
+            onError: (err) => toast.error(err.message),
+        })
     }
 
     if (isLoading) {

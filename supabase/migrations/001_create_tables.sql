@@ -10,6 +10,8 @@ create table public.trips (
   days integer not null check (days > 0 and days <= 30),
   budget text not null check (budget in ('low', 'mid', 'luxury')),
   travel_style text not null check (travel_style in ('adventure', 'cultural', 'relaxed', 'foodie')),
+  start_date date,
+  interests text,
   created_at timestamp with time zone default now()
 );
 

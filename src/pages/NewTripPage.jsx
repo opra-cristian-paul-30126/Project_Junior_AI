@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import PageWrapper from '../components/layout/PageWrapper'
 import { generateItinerary } from '../services/gemini'
@@ -34,11 +35,13 @@ export default function NewTripPage() {
     const [budget, setBudget] = useState('mid')
     const [travelStyle, setTravelStyle] = useState('cultural')
     const [interests, setInterests] = useState('')
+    const [startDate, setStartDate] = useState('')
     const [loading, setLoading] = useState(false)
     const [quote] = useState(
         TRAVEL_QUOTES[Math.floor(Math.random() * TRAVEL_QUOTES.length)]
     )
     const navigate = useNavigate()
+    const queryClient = useQueryClient()
 
     const handleSubmit = async (e) => {
         e.preventDefault()
@@ -53,16 +56,19 @@ export default function NewTripPage() {
                 budget,
                 travelStyle,
                 interests,
+                startDate,
             })
 
             // 2. Save trip to Supabase
             toast.loading('Saving your itinerary...', { id: 'generating' })
-            const trip = await createTrip({ destination, days, budget, travelStyle })
+            const trip = await createTrip({ destination, days, budget, travelStyle, startDate, interests })
 
             // 3. Save itinerary days + activities
             await saveItinerary(trip.id, itinerary.days)
 
             toast.success('Your trip is ready!', { id: 'generating' })
+
+            queryClient.invalidateQueries({ queryKey: ['trips'] })
             navigate(`/itinerary/${trip.id}`)
         } catch (error) {
             console.error('Trip creation failed: ', error)
@@ -136,6 +142,33 @@ export default function NewTripPage() {
                             focus:ring-primary-500/50 transition-all"
                             required
                         />
+                    </div>
+
+                    {/* Start Date */}
+                    <div className="glass p-6">
+                        <label className="flex items-center gap-2 text-sm font-medium text-white/70 mb-3">
+                            <FiCalendar className="text-accent-400" /> Start Date (optional)
+                        </label>
+                        <input
+                            type="date"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white
+                            focus:outline-none focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/50
+                            transition-all"
+                        />
+                        {startDate && (
+                            <p className="text-white/30 text-xs mt-2">
+                                Season: {(() => {
+                                    const month = new Date(startDate).getMonth()
+                                    if (month >= 2 && month <= 4) return '🌸 Spring'
+                                    if (month >= 5 && month <= 7) return '☀️ Summer'
+                                    if (month >= 8 && month <= 10) return '🍂 Autumn'
+                                    return '❄️ Winter'
+                                })()}
+                                - activities will be tailored to this season
+                            </p>
+                        )}
                     </div>
 
                     {/* Budget */}

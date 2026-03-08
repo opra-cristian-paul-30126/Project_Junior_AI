@@ -4,14 +4,18 @@ const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY)
 
 const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
-function buildPrompt({ destination, days, budget, travelStyle, interests }) {
+function buildPrompt({ destination, days, budget, travelStyle, interests, startDate }) {
+    const dateContext = startDate
+        ? `\n - Travel dates: Starting ${new Date(startDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+        - Suggest activities appropriate for this time of year. Consider weather, seasonal events, and festivals.`
+        : ''
     return `You are an expert travel planner. Create a detailed ${days}-day travel
     itinerary for ${destination}.
     
     Travel preferences:
     - Budget level: ${budget}
     - Travel style: ${travelStyle}
-    - Special interests: ${interests || 'general sightseeing'}
+    - Special interests: ${interests || 'general sightseeing'}${dateContext}
     
     IMPORTANT: Respond ONLY with valid JSON in this exact format, no markdown, no
     explanation:
@@ -42,6 +46,11 @@ function buildPrompt({ destination, days, budget, travelStyle, interests }) {
         - For "location", ALWAYS provide a SPECIFIC real place name with address or neighborhood (e.g. "Trattoria da Mario, Via Roma 15" or "Deva Citadel, Strada Cetății"). NEVER use generic descriptions like "a hotel spa" or "a local restaurant"
         - Include practical tips in notes: estimated costs, opening hours, booking advice, or insider tips (2-3 sentences)
         - Tailor activities to the ${budget} budget level and ${travelStyle} travel style
+        - For user interests: ONLY incorporate them if they are realistic and verifiable (e.g. "local food" or "arhitecture").
+        If the user mentions specific events (concert, festival, exhibition), only include it if you are confident it actually
+        exists at that destination and time. If you cannot verify it, IGNORE the specific event and instead suggest similar alternatives
+        (e.g. if user says "The Weeknd concert" but none exists, suggest the city's best live music instead). NEVER invent or confirm events
+        you are unsure about.
         - Return ONLY the JSON object, nothing else
         `
 }

@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase'
 
-export async function createTrip({ destination, days, budget, travelStyle }) {
+export async function createTrip({ destination, days, budget, travelStyle, startDate, interests }) {
     const { data: { user } } = await supabase.auth.getUser()
 
     const { data, error } = await supabase
@@ -11,6 +11,8 @@ export async function createTrip({ destination, days, budget, travelStyle }) {
             days,
             budget,
             travel_style: travelStyle,
+            start_date: startDate || null,
+            interests: interests || null,
         })
         .select()
         .single()
