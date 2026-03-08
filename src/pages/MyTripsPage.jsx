@@ -1,8 +1,80 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useTrips, useDeleteTrip } from '../hooks/useTrips'
+import { usePhoto } from '../hooks/usePhoto'
 import PageWrapper from '../components/layout/PageWrapper'
 import toast from 'react-hot-toast'
 import { FiMapPin, FiCalendar, FiDollarSign, FiCompass, FiTrash2, FiEye, FiPlusCircle } from 'react-icons/fi'
+
+function TripCard({ trip, onDelete }) {
+    const { data: photo } = usePhoto(trip.destination)
+
+    return (
+        <div className="glass overflow-hidden group hover:bg-white/10 transition-all">
+            {/* Photo header */}
+            <div className="h-40 relative overflow-hidden">
+                {photo ? (
+                    <>
+                        <img
+                            src={photo.smallUrl}
+                            alt={photo.alt}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform
+                            duration-500"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-dark-900/80 to-transparent" />
+                        <p className="absolute bottom-2 right-2 text-white/20 text-xs">
+                            📷 <a href={photo.credit.link} target="_blank" rel="noopener noreferrer"
+                                className="hover:text-white/40">{photo.credit.name}</a>
+                        </p>
+                    </>
+                ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-primary-900/50 to-accent-500/20
+                    flex items-center justify-center">
+                        <span className="text-5xl">🌍</span>
+                    </div>
+                )}
+            </div>
+
+            {/* Card body */}
+            <div className="p-5">
+                <div className="flex items-center gap-2 mb-2">
+                    <FiMapPin className="text-accent-400" />
+                    <h3 className="font-bold text-white text-lg">{trip.destination}</h3>
+                </div>
+                <div className="flex flex-wrap gap-3 mb-3 text-sm text-white/40">
+                    <span className="flex items-center gap-1">
+                        <FiCalendar size={14} /> {trip.days} days
+                    </span>
+                    <span className="flex items-center gap-1">
+                        <FiDollarSign size={14} />
+                        <span className="capitalize">{trip.budget}</span>
+                    </span>
+                    <span className="flex items-center gap-1">
+                        <FiCompass size={14} />
+                        <span className="capitalize">{trip.travel_style}</span>
+                    </span>
+                </div>
+                <p className="text-white/30 text-xs mb-4">
+                    Created {new Date(trip.created_at).toLocaleDateString()}
+                </p>
+                <div className="flex gap-2">
+                    <Link
+                        to={`/itinerary/${trip.id}`}
+                        className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-primary-500/20 text-primary-400 hover:bg-primary-500/30 transition-all text-sm font-medium"
+                    >
+                        <FiEye size={16} /> View
+                    </Link>
+                    <button
+                        onClick={() => onDelete(trip.id, trip.destination)}
+                        className="flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-red-500/10 text-red-400/70 hover:bg-red-500/20 hover:text-red-400 transition-all text-sm"
+                    >
+                        <FiTrash2 size={16} />
+                    </button>
+                </div>
+            </div>
+        </div>
+    )
+}
+
 
 export default function MyTripsPage() {
     const { data: trips, isLoading } = useTrips()
@@ -62,49 +134,7 @@ export default function MyTripsPage() {
                 ) : (
                     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
                         {trips.map((trip) => (
-                            <div key={trip.id} className="glass p-6 group hover:bg-white/10 transition-all">
-                                <div className="flex items-start justify-between mb-3">
-                                    <div className="flex items-center gap-2">
-                                        <FiMapPin className="text-accent-400" />
-                                        <h3 className="font-bold text-white text-lg">{trip.destination}</h3>
-                                    </div>
-                                </div>
-
-                                <div className="flex flex-wrap gap-3 mb-4 text-sm text-white/40">
-                                    <span className="flex items-center gap-1">
-                                        <FiCalendar size={14} /> {trip.days} Days
-                                    </span>
-                                    <span className="flex items-center gap-1">
-                                        <FiDollarSign size={14} />
-                                        <span className="capitalize">{trip.budget}</span>
-                                    </span>
-                                    <span className="flex items-center gap-1">
-                                        <FiCompass size={14} />
-                                        <span className="capitalize">{trip.travel_style}</span>
-                                    </span>
-                                </div>
-
-                                <p className="text-white/30 text-xs mb-4">
-                                    Created {new Date(trip.created_at).toLocaleDateString()}
-                                </p>
-
-                                <div className="flex gap-2">
-                                    <Link
-                                        to={`/itinerary/${trip.id}`}
-                                        className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-primary-500/20
-                                    text-primary-400 hover:bg-primary-500/30 transition-all text-sm font-medium"
-                                    >
-                                        <FiEye size={16} /> View
-                                    </Link>
-                                    <button
-                                        onClick={() => handleDelete(trip.id, trip.destination)}
-                                        className="flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-red-500/10
-                                    text-red-400/70 hover:bg-red-500/20 hover:text-red-400 transition-all text-sm"
-                                    >
-                                        <FiTrash2 size={16} />
-                                    </button>
-                                </div>
-                            </div>
+                            <TripCard key={trip.id} trip={trip} onDelete={handleDelete} />
                         ))}
                     </div>
                 )}

@@ -1,13 +1,18 @@
 import { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
+import { generateItinerary } from '../services/gemini'
+import { saveItinerary } from '../services/itineraryServices'
+import { useQueryClient } from '@tanstack/react-query'
+import { supabase } from '../lib/supabase'
 import { useTrip } from '../hooks/useTrips'
+import { usePhoto } from '../hooks/usePhoto'
 import { useItinerary, useUpdateActivity, useDeleteActivity } from '../hooks/useItinerary'
 import PageWrapper from '../components/layout/PageWrapper'
 import toast from 'react-hot-toast'
 import {
     FiMapPin, FiCalendar, FiDollarSign, FiCompass, FiClock,
     FiEdit3, FiTrash2, FiCheck, FiX, FiArrowLeft,
-    FiSun, FiSunset, FiMoon
+    FiSun, FiSunset, FiMoon, FiRefreshCw
 } from 'react-icons/fi'
 
 const TYPE_ICONS = {
@@ -74,9 +79,15 @@ function ActivityCard({ activity }) {
                     {/* Activity name & location */}
                     <h4 className="font-semibold text-white text-lg">{activity.name}</h4>
                     {activity.location && (
-                        <p className="text-white/40 text-sm flex items-center gap-1 mt-1">
+                        <a
+                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activity.location)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary-400/70 text-sm flex items-center gap-1 mt-1 hover:text-primary-300 transition-colors"
+                        >
                             <FiMapPin size={12} /> {activity.location}
-                        </p>
+                            <span className="text-xs text-white/20 ml-1">↗</span>
+                        </a>
                     )}
 
                     {/* Notes - editable */}
@@ -126,8 +137,45 @@ function ActivityCard({ activity }) {
 export default function ItineraryPage() {
     const { id } = useParams()
     const { data: trip, isLoading: tripLoading } = useTrip(id)
+    const { data: photo } = usePhoto(trip?.destination)
     const { data: days, isLoading: daysLoading } = useItinerary(id)
     const [activeDay, setActiveDay] = useState(0)
+
+    const queryClient = useQueryClient()
+    const [regenerating, setRegenerating] = useState(false)
+
+    const handleRegenerate = async () => {
+        if (!confirm('Regenerate this itinerary? The current one will be replaced.')) return
+        setRegenerating(true)
+
+        try {
+            toast.loading('Regenerating itinerary...', { id: 'regenerating' })
+
+            // 1. Delete existing days (cascades to activities)
+            await supabase.from('itinerary_days').delete().eq('trip_id', id)
+
+            // 2. Generate new itinerary
+            const itinerary = await generateItinerary({
+                destination: trip.destination,
+                days: trip.days,
+                budget: trip.budget,
+                travelStyle: trip.travel_style,
+            })
+
+            // 3. Save new itinerary
+            await saveItinerary(id, itinerary.days)
+
+            // 4. Refresh the data
+            queryClient.invalidateQueries({ queryKey: ['itinerary', id] })
+
+            toast.success('New itinerary generated!', { id: 'regenerating' })
+        } catch (error) {
+            toast.error(error.message || 'Regeneration failed', { id: 'regenerating' })
+        } finally {
+            setRegenerating(false)
+        }
+    }
+
 
     if (tripLoading || daysLoading) {
         return (
@@ -156,22 +204,54 @@ export default function ItineraryPage() {
         <PageWrapper>
             <div className="animate-fade-in">
                 {/* Back button + Trip Header */}
-                <Link to="/my-trips" className="inline-flex items-center gap-1 text-white/40 hover:text-white/70 transition-colors mb-6">
-                    <FiArrowLeft size={16} /> Back to My Trips
-                </Link>
+                <div className="flex items-center justify-between mb-6">
+                    <Link to="/my-trips" className="inline-flex items-center gap-1 text-white/40 hover:text-white/70 transition-colors mb-6">
+                        <FiArrowLeft size={16} /> Back to My Trips
+                    </Link>
+                    <button
+                        onClick={handleRegenerate}
+                        disabled={regenerating}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10
+                        text-white/60 hover:text-white hover:bg-white/10 transition-all disabled:opacity-50"
+                    >
+                        <FiRefreshCw size={16} className={regenerating ? 'animate-spin' : ''} />
+                        {regenerating ? 'Regenerating...' : 'Regenerate'}
+                    </button>
+                </div>
 
-                <div className="glass p-6 mb-8">
-                    <h1 className="text-3xl font-bold text-white mb-3">
-                        <FiMapPin className="inline text-accent-400 mr-2" />
-                        {trip.destination}
-                    </h1>
-                    <div className="flex flex-wrap gap-4 text-sm text-white/50">
-                        <span className="flex items-center gap-1">
-                            <FiCalendar size={14} /> {trip.days} days
-                        </span>
-                        <span className="flex items-center gap-1">
-                            <FiDollarSign size={14} /> <span className="capitalize">{trip.travel_style}</span>
-                        </span>
+
+                <div className="glass overflow-hidden mb-8">
+                    {photo && (
+                        <div className="h-48 relative overflow-hidden">
+                            <img
+                                src={photo.url}
+                                alt={photo.alt}
+                                className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-dark-900 
+                            via-dark-900/50 to-transparent" />
+                            <p className="absolute bottom-2 right-3 text-white/20 text-xs">
+                                📷 <a href={photo.credit.link} target="_blank" rel="noopener noreferrer"
+                                    className="hover:text-white/40">{photo.credit.name}</a>
+                            </p>
+                        </div>
+                    )}
+                    <div className="p-6">
+                        <h1 className="text-3xl font-bold text-white mb-3">
+                            <FiMapPin className="inline text-accent-400 mr-2" />
+                            {trip.destination}
+                        </h1>
+                        <div className="flex flex-wrap gap-4 text-sm text-white/50">
+                            <span className="flex items-center gap-1">
+                                <FiCalendar size={14} /> {trip.days} days
+                            </span>
+                            <span className="flex items-center gap-1">
+                                <FiDollarSign size={14} /> <span className="capitalize">{trip.budget}</span>
+                            </span>
+                            <span className="flex items-center gap-1">
+                                <FiCompass size={14} /> <span className="capitalize">{trip.travel_style}</span>
+                            </span>
+                        </div>
                     </div>
                 </div>
 
