@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { generateItinerary } from '../services/gemini'
+import { generateItinerary, modifyItinerary } from '../services/gemini'
 import { saveItinerary } from '../services/itineraryServices'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
@@ -12,7 +12,7 @@ import toast from 'react-hot-toast'
 import {
     FiMapPin, FiCalendar, FiDollarSign, FiCompass, FiClock,
     FiEdit3, FiTrash2, FiCheck, FiX, FiArrowLeft,
-    FiSun, FiSunset, FiMoon, FiRefreshCw
+    FiSun, FiSunset, FiMoon, FiRefreshCw, FiMessageSquare
 } from 'react-icons/fi'
 
 const TYPE_ICONS = {
@@ -140,9 +140,57 @@ export default function ItineraryPage() {
     const { data: photo } = usePhoto(trip?.destination)
     const { data: days, isLoading: daysLoading } = useItinerary(id)
     const [activeDay, setActiveDay] = useState(0)
+    const [showFeedback, setShowFeedback] = useState(false)
+    const [feedback, setFeedback] = useState('')
 
     const queryClient = useQueryClient()
     const [regenerating, setRegenerating] = useState(false)
+
+    const handleSmartRegenerate = async () => {
+        if (!feedback.trim()) return
+        setRegenerating(true)
+
+        try {
+            toast.loading('AI is modifying your itinerary...', { id: 'regenerating' })
+
+            // Build current itinerary objet to send to backend
+            const currentItinerary = {
+                trip_title: trip.destination,
+                days: days.map(day => ({
+                    day_number: day.day_number,
+                    title: day.title,
+                    description: day.description,
+                    activities: day.activities.map(a => ({
+                        time_of_day: a.time_of_day,
+                        name: a.name,
+                        location: a.location,
+                        notes: a.notes,
+                        type: a.type,
+                    })) || [],
+                })),
+            }
+
+            // 1. Get modified itinerary from AI
+            const modified = await modifyItinerary(trip.destination, currentItinerary, feedback)
+
+            // 2. Delete existing days
+            await supabase.from('itinerary_days').delete().eq('trip_id', id)
+
+            // 3. Save modified itinerary
+            await saveItinerary(id, modified.days)
+
+            // 4. Refresh
+            queryClient.invalidateQueries({ queryKey: ['itinerary', id] })
+
+            toast.success('Itinerary updated!', { id: 'regenerating' })
+            setFeedback('')
+            setShowFeedback(false)
+        } catch (error) {
+            toast.error(error.message || 'Modification failed', { id: 'regenerating' })
+        } finally {
+            setRegenerating(false)
+        }
+    }
 
     const handleRegenerate = async () => {
         if (!confirm('Regenerate this itinerary? The current one will be replaced.')) return
@@ -207,19 +255,59 @@ export default function ItineraryPage() {
             <div className="animate-fade-in">
                 {/* Back button + Trip Header */}
                 <div className="flex items-center justify-between mb-6">
-                    <Link to="/my-trips" className="inline-flex items-center gap-1 text-white/40 hover:text-white/70 transition-colors mb-6">
+                    <Link to="/my-trips" className="inline-flex items-center gap-1 text-white/40 hover:text-white/70 transition-colors">
                         <FiArrowLeft size={16} /> Back to My Trips
                     </Link>
-                    <button
-                        onClick={handleRegenerate}
-                        disabled={regenerating}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10
-                        text-white/60 hover:text-white hover:bg-white/10 transition-all disabled:opacity-50"
-                    >
-                        <FiRefreshCw size={16} className={regenerating ? 'animate-spin' : ''} />
-                        {regenerating ? 'Regenerating...' : 'Regenerate'}
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={handleRegenerate}
+                            disabled={regenerating}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10
+                            text-white/60 hover:text-white hover:bg-white/10 transition-all disabled:opacity-50"
+                        >
+                            <FiRefreshCw size={16} className={regenerating ? 'animate-spin' : ''} />
+                            {regenerating ? 'Working...' : 'Regenerate'}
+                        </button>
+                        <button
+                            onClick={() => setShowFeedback(!showFeedback)}
+                            disabled={regenerating}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary-500/20 border border-primary-500/30
+                            text-primary-300 hover:text-white hover:bg-primary-500/30 transition-all disabled:opacity-50"
+                        >
+                            <FiMessageSquare size={16} />
+                            Modify with AI
+                        </button>
+                    </div>
                 </div>
+
+                {showFeedback && (
+                    <div className="glass p-4 mb-6 animate-fade-in">
+                        <label className="text-sm text-white/50 mb-2 block">
+                            Tell the AI what to change:
+                        </label>
+                        <div className="flex gap-3">
+                            <input
+                                type="text"
+                                value={feedback}
+                                onChange={(e) => setFeedback(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleSmartRegenerate()}
+                                className="flex-1 bg-white/5 border border-white/10 rounded-xl py-3 px-4
+                                text-white placeholder-white/30 focus:outline-none focus:border-primary-500/50
+                                focus:ring-1 focus:ring-primary-500/50 transition-all"
+                                placeholder="e.g. Change day 1 evening to cultural activity instead of food"
+                                disabled={regenerating}
+                            />
+                            <button
+                                onClick={handleSmartRegenerate}
+                                disabled={regenerating || !feedback.trim()}
+                                className="px-6 py-3 rounded-xl gradient-primary text-white font-medium hover:opacity-90
+                            transition-opacity disabled:opacity-50"
+                            >
+                                {regenerating ? 'Modifying...' : 'Apply'}
+                            </button>
+                        </div>
+                    </div>
+                )}
 
 
                 <div className="glass overflow-hidden mb-8">
@@ -264,42 +352,60 @@ export default function ItineraryPage() {
                     </div>
                 </div>
 
-                {/* Day Tabs */}
-                <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-                    {days?.map((day, index) => (
+                {/* Day Tabs & Content */}
+                {(!days || days.length === 0) ? (
+                    <div className="text-center py-16 glass animate-fade-in">
+                        <div className="text-5xl mb-4">📋</div>
+                        <h2 className="text-xl font-bold text-white mb-2">No itinerary yet</h2>
+                        <p className="text-white/50 mb-6">This trip doesn't have an itinerary. Generate one now!</p>
                         <button
-                            key={day.id}
-                            onClick={() => setActiveDay(index)}
-                            className={`px-4 py-2 rounded-xl font-medium text-sm whitespace-nowrap transition-all
-                                ${activeDay === index
-                                    ? 'gradient-primary text-white'
-                                    : 'glass text-white/50 hover:text-white'
-                                }`}
+                            onClick={handleRegenerate}
+                            disabled={regenerating}
+                            className="inline-flex items-center gap-2 gradient-primary text-white font-semibold py-3 px-6 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50"
                         >
-                            Day {day.day_number}
+                            <FiRefreshCw size={16} className={regenerating ? 'animate-spin' : ''} />
+                            {regenerating ? 'Generating...' : 'Generate Itinerary'}
                         </button>
-                    ))}
-                </div>
-
-                {/* Current Day Content */}
-                {currentDay && (
-                    <div className="animate-fade-in">
-                        <div className="mb-6">
-                            <h2 className="text-2xl font-bold text-white">{currentDay.title}</h2>
-                            {currentDay.description && (
-                                <p className="text-white/60 mt-2">{currentDay.description}</p>
-                            )}
-                        </div>
-
-                        <div className="space-y-4">
-                            {currentDay.activities?.map((activity) => (
-                                <ActivityCard key={activity.id} activity={activity} />
-                            ))}
-                            {(!currentDay.activities || currentDay.activities.length === 0) && (
-                                <p className="text-white/30 text-center py-8">No activities for this day</p>
-                            )}
-                        </div>
                     </div>
+                ) : (
+                    <>
+                        <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+                            {days.map((day, index) => (
+                                <button
+                                    key={day.id}
+                                    onClick={() => setActiveDay(index)}
+                                    className={`px-4 py-2 rounded-xl font-medium text-sm whitespace-nowrap transition-all
+                                        ${activeDay === index
+                                            ? 'gradient-primary text-white'
+                                            : 'glass text-white/50 hover:text-white'
+                                        }`}
+                                >
+                                    Day {day.day_number}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Current Day Content */}
+                        {currentDay && (
+                            <div className="animate-fade-in">
+                                <div className="mb-6">
+                                    <h2 className="text-2xl font-bold text-white">{currentDay.title}</h2>
+                                    {currentDay.description && (
+                                        <p className="text-white/60 mt-2">{currentDay.description}</p>
+                                    )}
+                                </div>
+
+                                <div className="space-y-4">
+                                    {currentDay.activities?.map((activity) => (
+                                        <ActivityCard key={activity.id} activity={activity} />
+                                    ))}
+                                    {(!currentDay.activities || currentDay.activities.length === 0) && (
+                                        <p className="text-white/30 text-center py-8">No activities for this day</p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
         </PageWrapper>

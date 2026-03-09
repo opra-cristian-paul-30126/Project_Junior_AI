@@ -32,3 +32,8 @@ class PhotoResponse(BaseModel):
     alt: str
     credit_name: str
     credit_link: str
+
+class ModifyRequest(BaseModel):
+    destination: str
+    feedback: str
+    current_itinerary: ItineraryResponse

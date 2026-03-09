@@ -81,3 +81,49 @@ def generate_itinerary(destination, days, budget, travel_style, interests=None, 
         raise ValueError("Invalid itinerary structure from Gemini")
     
     return itinerary
+
+def modify_itinerary(current_itinerary, feedback, destination):
+    prompt = f"""You are an expert travel planner. A user has a travel itinerary for {destination} and wants to modify it.
+
+    CURRENT ITINERARY:
+    {json.dumps(current_itinerary, indent=2)}
+
+    USER FEEDBACK:
+    {feedback}
+
+    Modify the itinerary based on the user's feedback. ONLY change what the user asked for - keep everything else exactly the same.
+
+    IMPORTANT: Return the COMPLETE modified itinerary in the exact same JSON format:
+    {{
+        "trip_title": "...",
+        "days": [...]
+    }}
+
+    Rules:
+        - Keep the same structure: each day has day_number, title, description, and activities
+        - Each day must have exactly 3 activities (morning, afternoon, evening)
+        - time_of_day must be: "morning", "afternoon", "evening"
+        - type must be: "food", "culture", "outdoor", "shopping", "nightlife"
+        - For "location", provide SPECIFIC real place names with addresses
+        - ONLY modify what the user requested, keep unchanged activities as they are
+        - Return ONLY the JSON object, nothing else
+    """
+    response = model.generate_content(prompt)
+    text = response.text
+
+    # Clean markdown wrappers
+    text = text.strip()
+    if text.startswith("```json"):
+        text = text[7:]
+    if text.startswith("```"):
+        text = text[3:]
+    if text.endswith("```"):
+        text = text[:-3]
+    text = text.strip()
+
+    itinerary = json.loads(text)
+
+    if not itinerary.get("trip_title") or not isinstance(itinerary.get("days"), list):
+        raise ValueError("Invalid itinerary structure from Gemini")
+    
+    return itinerary

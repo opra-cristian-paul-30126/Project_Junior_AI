@@ -19,3 +19,21 @@ export async function generateItinerary(tripDetails) {
     }
     return response.json()
 }
+
+export async function modifyItinerary(destination, currentItinerary, feedback) {
+    const response = await fetch(`${API_URL}/api/modify-itinerary`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            destination,
+            feedback,
+            current_itinerary: currentItinerary,
+        }),
+    })
+
+    if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.detail || 'Failed to modify itinerary')
+    }
+    return response.json()
+}
