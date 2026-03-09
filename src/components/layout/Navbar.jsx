@@ -1,14 +1,17 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { useQueryClient } from '@tanstack/react-query'
 import { FiMap, FiPlusCircle, FiList, FiLogOut } from 'react-icons/fi'
 
 export default function Navbar() {
     const { signOut } = useAuth()
     const navigate = useNavigate()
     const location = useLocation()
+    const queryClient = useQueryClient()
 
     const handleSignOut = async () => {
         await signOut()
+        queryClient.clear() // Wipes all cached trips/itineraries for the old user
         navigate('/auth')
     }
 

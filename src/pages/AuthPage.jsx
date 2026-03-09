@@ -65,6 +65,7 @@ export default function AuthPage() {
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
+                                autoComplete="off"
                                 className="w-full bg-white/5 border border-white/10 rounded-x1 py-3 pl-10
                                 pr-4 text-white placeholder-white/30 focus:outline-none focus:border-primary-500/50
                                 focus:ring-1 focus:ring-primary-500/50 transition-all"
@@ -82,6 +83,7 @@ export default function AuthPage() {
                                 type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
+                                autoComplete="new-password"
                                 className="w-full bg-white/5 border border-white/10 rounded-x1 py-3 pl-10
                                 pr-4 text-white placeholder-white/30 focus:outline-none focus:border-primary-500/50
                                 focus:ring-1 focus:ring-primary-500/50 transition-all"
