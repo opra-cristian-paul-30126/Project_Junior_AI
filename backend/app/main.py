@@ -11,7 +11,7 @@ app = FastAPI(
 #CORS - allow the React frontend to call the backend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"], # Vite dev server
+    allow_origins=["http://localhost:5173", "http://localhost"], # Vite dev server and Docker Nginx
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
